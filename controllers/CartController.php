@@ -21,28 +21,63 @@ class CartController
             echo json_encode(['success' => false, 'message' => 'ID produk tidak valid.']);
             return;
         }
-
         $ebookId = (int)$_POST['id'];
 
-        // Logika Baru: Hanya tambahkan jika BELUM ada di keranjang
         if (!isset($_SESSION['cart'][$ebookId])) {
-            // Set kuantitas default ke 1
-            $_SESSION['cart'][$ebookId] = 1;
+            $_SESSION['cart'][$ebookId] = 1; // Kuantitas default 1
             $message = 'Buku berhasil ditambahkan ke keranjang!';
         } else {
-            // Beri pesan bahwa item sudah ada
             $message = 'Buku sudah ada di dalam keranjang.';
         }
 
-        // --- LOGIKA PENGHITUNGAN JUMLAH UNIK ---
+        // LOGIKA BARU: Hitung jumlah item unik (jenis barang)
         $uniqueItemCount = count($_SESSION['cart']);
 
         echo json_encode(['success' => true, 'message' => $message, 'cart_count' => $uniqueItemCount]);
     }
 
     /**
-     * Menampilkan halaman keranjang.
+     * Memperbarui kuantitas via AJAX.
      */
+    public function updateQuantity()
+    {
+        header('Content-Type: application/json');
+        if (isset($_POST['id']) && isset($_POST['quantity'])) {
+            $ebookId = (int)$_POST['id'];
+            $quantity = (int)$_POST['quantity'];
+
+            if (isset($_SESSION['cart'][$ebookId])) {
+                if ($quantity > 0) {
+                    $_SESSION['cart'][$ebookId] = $quantity;
+                } else {
+                    unset($_SESSION['cart'][$ebookId]);
+                }
+            }
+
+            $ebookModel = new Ebook();
+            $total_price = 0;
+            // LOGIKA BARU: Hitung jumlah item unik
+            $uniqueItemCount = count($_SESSION['cart']);
+
+            if (!empty($_SESSION['cart'])) {
+                foreach ($_SESSION['cart'] as $id => $qty) {
+                    $item = $ebookModel->findById($id);
+                    if ($item) {
+                        $total_price += (int)$item['price'] * $qty;
+                    }
+                }
+            }
+            echo json_encode([
+                'success' => true,
+                'new_total_price' => 'Rp ' . number_format($total_price),
+                'new_cart_count' => $uniqueItemCount // Kirim jumlah unik
+            ]);
+            exit();
+        }
+        echo json_encode(['success' => false]);
+    }
+
+    // --- Fungsi lain tetap sama ---
     public function viewCart()
     {
         $cart_items = [];
@@ -62,20 +97,12 @@ class CartController
 
         require 'views/cart.php';
     }
-
-    /**
-     * Membersihkan semua item dari keranjang.
-     */
     public function clearCart()
     {
         $_SESSION['cart'] = [];
         header('Location: index.php?action=cart');
         exit();
     }
-
-    /**
-     * Menghapus satu item dari keranjang.
-     */
     public function removeFromCart()
     {
         if (isset($_GET['id'])) {
@@ -86,47 +113,5 @@ class CartController
         }
         header('Location: index.php?action=cart');
         exit();
-    }
-
-    /**
-     * Memperbarui kuantitas item di keranjang via AJAX.
-     */
-    public function updateQuantity()
-    {
-        header('Content-Type: application/json');
-        if (isset($_POST['id']) && isset($_POST['quantity'])) {
-            $ebookId = (int)$_POST['id'];
-            $quantity = (int)$_POST['quantity'];
-
-            if (isset($_SESSION['cart'][$ebookId])) {
-                if ($quantity > 0) {
-                    $_SESSION['cart'][$ebookId] = $quantity;
-                } else {
-                    unset($_SESSION['cart'][$ebookId]);
-                }
-            }
-
-            $ebookModel = new Ebook();
-            $total_price = 0;
-            // Hitung kembali jumlah item unik
-            $uniqueItemCount = count($_SESSION['cart']);
-
-            if (!empty($_SESSION['cart'])) {
-                foreach ($_SESSION['cart'] as $id => $qty) {
-                    $item = $ebookModel->findById($id);
-                    if ($item) {
-                        $total_price += (int)$item['price'] * $qty;
-                    }
-                }
-            }
-
-            echo json_encode([
-                'success' => true,
-                'new_total_price' => 'Rp ' . number_format($total_price),
-                'new_cart_count' => $uniqueItemCount // Kirim jumlah unik
-            ]);
-            exit();
-        }
-        echo json_encode(['success' => false]);
     }
 }
