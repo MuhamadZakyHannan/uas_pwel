@@ -1,72 +1,70 @@
 <?php
 session_start();
-// Memuat semua library dari Composer
+// Memuat semua library dari Composer (termasuk Midtrans)
 require_once 'vendor/autoload.php';
 
+// Memuat semua file konfigurasi dan controller yang dibutuhkan
 require_once 'config/database.php';
 require_once 'controllers/HomeController.php';
 require_once 'controllers/EbookController.php';
 require_once 'controllers/AuthController.php';
-// Memanggil Controller Pembayaran yang baru
 require_once 'controllers/PaymentController.php';
+require_once 'controllers/CartController.php';
 
+// Menentukan aksi default jika tidak ada parameter di URL
 $action = $_GET['action'] ?? 'home';
 
+// Router utama untuk mengarahkan ke controller yang sesuai
 switch ($action) {
-  // Rute Autentikasi
+  // Rute untuk Autentikasi dan Reset
   case 'login':
-    $controller = new AuthController();
-    $controller->login();
-    break;
   case 'signup':
-    $controller = new AuthController();
-    $controller->signup();
-    break;
   case 'logout':
-    $controller = new AuthController();
-    $controller->logout();
+    (new AuthController())->$action();
+    break;
+  case 'reset_session': // Rute baru untuk membersihkan session
+    (new AuthController())->resetSession();
     break;
 
-  // Rute eBook
+  // Rute untuk mengelola eBook
   case 'list':
-    $controller = new EbookController();
-    $controller->index();
-    break;
-  case 'create':
-    $controller = new EbookController();
-    $controller->create();
-    break;
-  case 'store':
-    $controller = new EbookController();
-    $controller->store();
-    break;
-  case 'edit':
-    $controller = new EbookController();
-    $controller->edit();
-    break;
-  case 'update':
-    $controller = new EbookController();
-    $controller->update();
-    break;
-  case 'delete':
-    $controller = new EbookController();
-    $controller->delete();
+    (new EbookController())->index();
     break;
   case 'search':
-    $controller = new EbookController();
-    $controller->search();
+  case 'create':
+  case 'store':
+  case 'edit':
+  case 'update':
+  case 'delete':
+  case 'detail':
+    (new EbookController())->$action();
     break;
 
-  // Rute Pembayaran
+  // Rute untuk Keranjang Belanja
+  case 'cart':
+    (new CartController())->viewCart();
+    break;
+  case 'add_to_cart':
+    (new CartController())->addToCart();
+    break;
+  case 'remove_from_cart':
+    (new CartController())->removeFromCart();
+    break;
+  case 'updateQuantity':
+    (new CartController())->updateQuantity();
+    break;
+  case 'clearCart':
+    (new CartController())->clearCart();
+    break;
+
+  // Rute untuk Transaksi Pembayaran
   case 'create_transaction':
-    $controller = new PaymentController();
-    $controller->createTransaction();
+    (new PaymentController())->createTransaction();
     break;
 
-  // Rute Beranda
+  // Rute Halaman Utama (default)
   case 'home':
   default:
-    $controller = new HomeController();
-    $controller->index();
+    (new HomeController())->index();
     break;
 }

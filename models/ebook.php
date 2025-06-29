@@ -4,6 +4,9 @@ require_once __DIR__ . '/../config/database.php';
 
 class Ebook
 {
+  /**
+   * Mengambil semua eBook dengan paginasi.
+   */
   public function getAll($index = null, $limit = null)
   {
     $conn = connect();
@@ -15,6 +18,9 @@ class Ebook
     return mysqli_fetch_all($result, MYSQLI_ASSOC);
   }
 
+  /**
+   * Menghitung total semua eBook.
+   */
   public function countAll()
   {
     $conn = connect();
@@ -22,6 +28,9 @@ class Ebook
     return mysqli_fetch_assoc($result)['total'];
   }
 
+  /**
+   * Mencari eBook berdasarkan ID.
+   */
   public function findById($id)
   {
     $conn = connect();
@@ -30,15 +39,20 @@ class Ebook
     return mysqli_fetch_assoc($result);
   }
 
+  /**
+   * Membuat eBook baru dan menyimpannya ke database.
+   */
   public function create($data, $files)
   {
     $conn = connect();
     $username = $_SESSION['username'];
     $title = htmlspecialchars($data['title']);
+    $description = htmlspecialchars($data['description'] ?? '');
     $author = htmlspecialchars($data['author']);
+    $year = !empty($data['year']) ? htmlspecialchars($data['year']) : null; // Ambil data tahun
     $category = htmlspecialchars($data['category']);
     $price = (int)htmlspecialchars($data['price'] ?? 0);
-    $type = ($price > 0) ? 'Paid' : 'Free'; // Tipe ditentukan otomatis dari harga
+    $type = ($price > 0) ? 'Paid' : 'Free';
     $link = htmlspecialchars($data['link']);
     $cover = $this->uploadCover($files['cover']);
 
@@ -46,26 +60,28 @@ class Ebook
     if (is_null($cover)) $cover = 'default-cover.jpg';
     if (!filter_var($link, FILTER_VALIDATE_URL)) $link = "https://$link";
 
-    $query = "INSERT INTO ebooks (added_by, title, author, category, type, price, link, cover, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Verified')";
+    $query = "INSERT INTO ebooks (added_by, title, description, author, year, category, type, price, link, cover, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Verified')";
     $stmt = mysqli_prepare($conn, $query);
 
-    // Error handling jika query gagal
-    if ($stmt === false) {
-      die('MySQL prepare error: ' . mysqli_error($conn));
-    }
+    if ($stmt === false) return -1;
 
-    mysqli_stmt_bind_param($stmt, "ssssisss", $username, $title, $author, $category, $type, $price, $link, $cover);
+    mysqli_stmt_bind_param($stmt, "sssssissss", $username, $title, $description, $author, $year, $category, $type, $price, $link, $cover);
     mysqli_stmt_execute($stmt);
 
     return mysqli_stmt_affected_rows($stmt);
   }
 
+  /**
+   * Memperbarui data eBook yang ada.
+   */
   public function update($data, $files)
   {
     $conn = connect();
     $id = htmlspecialchars($data['id']);
     $title = htmlspecialchars($data['title']);
+    $description = htmlspecialchars($data['description'] ?? '');
     $author = htmlspecialchars($data['author']);
+    $year = !empty($data['year']) ? htmlspecialchars($data['year']) : null; // Ambil data tahun
     $category = htmlspecialchars($data['category']);
     $price = (int)htmlspecialchars($data['price'] ?? 0);
     $type = ($price > 0) ? 'Paid' : 'Free';
@@ -77,19 +93,19 @@ class Ebook
     if (is_null($cover)) $cover = $oldCover;
     elseif ($cover === false) return false;
 
-    $query = "UPDATE ebooks SET title = ?, author = ?, category = ?, type = ?, price = ?, link = ?, status = ?, cover = ? WHERE id = ?";
+    $query = "UPDATE ebooks SET title = ?, description = ?, author = ?, year = ?, category = ?, type = ?, price = ?, link = ?, status = ?, cover = ? WHERE id = ?";
     $stmt = mysqli_prepare($conn, $query);
 
-    if ($stmt === false) {
-      die('MySQL prepare error: ' . mysqli_error($conn));
-    }
+    if ($stmt === false) return -1;
 
-    mysqli_stmt_bind_param($stmt, "ssssisssi", $title, $author, $category, $type, $price, $link, $status, $cover, $id);
+    mysqli_stmt_bind_param($stmt, "sssssissssi", $title, $description, $author, $year, $category, $type, $price, $link, $status, $cover, $id);
     mysqli_stmt_execute($stmt);
 
     $affected_rows = mysqli_stmt_affected_rows($stmt);
     if ($affected_rows > 0 && $cover !== $oldCover && $oldCover !== 'default-cover.jpg') {
-      unlink("assets/img/ebook/$oldCover");
+      if (file_exists("assets/img/ebook/$oldCover")) {
+        unlink("assets/img/ebook/$oldCover");
+      }
     }
 
     return $affected_rows;
@@ -104,7 +120,6 @@ class Ebook
       $cover = $ebook['cover'];
       mysqli_query($conn, "DELETE FROM ebooks WHERE id = $id");
       $affected_rows = mysqli_affected_rows($conn);
-
       if ($affected_rows > 0 && $cover !== 'default-cover.jpg' && file_exists("assets/img/ebook/$cover")) {
         unlink("assets/img/ebook/$cover");
       }
@@ -140,7 +155,10 @@ class Ebook
     $coverExtension = strtolower(pathinfo($coverFile['name'], PATHINFO_EXTENSION));
     if (!in_array($coverExtension, $allowedExtensions) || $coverFile['size'] > 1048576) return false;
     $newCoverName = uniqid('cover-') . '.' . $coverExtension;
-    move_uploaded_file($coverFile['tmp_name'], 'assets/img/ebook/' . $newCoverName);
-    return $newCoverName;
+    $destination = 'assets/img/ebook/' . $newCoverName;
+    if (move_uploaded_file($coverFile['tmp_name'], $destination)) {
+      return $newCoverName;
+    }
+    return false;
   }
 }

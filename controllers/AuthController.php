@@ -12,6 +12,16 @@ class AuthController
     $this->checkCookieLogin();
   }
 
+  // Metode BARU untuk menghancurkan session yang rusak
+  public function resetSession()
+  {
+    // Menghancurkan semua data di session
+    session_destroy();
+    // Mengarahkan kembali ke halaman utama
+    header('Location: index.php');
+    exit();
+  }
+
   public function login()
   {
     if (isset($_SESSION['username'])) {
@@ -25,9 +35,10 @@ class AuthController
       if ($user && password_verify($_POST['password'], $user['password'])) {
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];
+        $_SESSION['cart'] = []; // Pastikan keranjang direset saat login
 
         if (isset($_POST['remember'])) {
-          setcookie('user_id', $user['id'], time() + (86400 * 3), "/"); // 3 hari
+          setcookie('user_id', $user['id'], time() + (86400 * 3), "/");
           setcookie('user_key', hash('sha256', $user['username']), time() + (86400 * 3), "/");
         }
         header('Location: index.php?action=list');
@@ -71,7 +82,6 @@ class AuthController
     }
   }
 
-  // Helper untuk view
   public static function checkUserLogin()
   {
     if (!isset($_SESSION['username'])) {

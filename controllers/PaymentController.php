@@ -6,45 +6,75 @@ class PaymentController
 {
   public function createTransaction()
   {
-    // Pastikan pengguna sudah login untuk membeli
     if (!isset($_SESSION['username'])) {
       http_response_code(401);
-      echo json_encode(['error' => 'Silakan login terlebih dahulu untuk membeli.']);
+      echo json_encode(['error' => 'Silakan login terlebih dahulu.']);
       exit();
     }
 
-    // Ambil data dari request frontend
-    $ebookId = $_POST['id'];
-    $ebookPrice = (int)$_POST['price']; // Pastikan harga adalah integer
-    $ebookTitle = $_POST['title'];
+    $item_details = [];
+    $gross_amount = 0;
+    $order_id_prefix = '';
 
-    // Buat order ID yang unik
-    $order_id = 'BUKOO-' . $ebookId . '-' . time();
+    // Skenario 1: Beli Sekarang (data dikirim dari tombol)
+    if (isset($_POST['ebook_id'])) {
+      $ebookModel = new Ebook();
+      $ebook = $ebookModel->findById((int)$_POST['ebook_id']);
 
-    // Siapkan parameter untuk Midtrans
+      if (!$ebook || $ebook['price'] <= 0) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Produk tidak valid untuk dibeli.']);
+        exit();
+      }
+
+      $item_details[] = [
+        'id' => $ebook['id'],
+        'price' => (int)$ebook['price'],
+        'quantity' => 1,
+        'name' => $ebook['title']
+      ];
+      $gross_amount = (int)$ebook['price'];
+      $order_id_prefix = 'BUKOO-DIRECT-';
+
+      // Skenario 2: Checkout Keranjang (data dari session)
+    } elseif (!empty($_SESSION['cart'])) {
+      $ebookModel = new Ebook();
+      foreach ($_SESSION['cart'] as $ebookId => $quantity) {
+        $ebook = $ebookModel->findById($ebookId);
+        if ($ebook && $ebook['price'] > 0) {
+          $item_details[] = [
+            'id' => $ebook['id'],
+            'price' => (int)$ebook['price'],
+            'quantity' => $quantity,
+            'name' => $ebook['title']
+          ];
+          $gross_amount += (int)$ebook['price'] * $quantity;
+        }
+      }
+      $order_id_prefix = 'BUKOO-CART-';
+    }
+
+    // Jika tidak ada item sama sekali
+    if (empty($item_details)) {
+      http_response_code(400);
+      echo json_encode(['error' => 'Tidak ada item untuk dibayar.']);
+      exit();
+    }
+
     $params = [
       'transaction_details' => [
-        'order_id' => $order_id,
-        'gross_amount' => $ebookPrice,
+        'order_id' => $order_id_prefix . time(),
+        'gross_amount' => $gross_amount,
       ],
-      'item_details' => [[
-        'id' => $ebookId,
-        'price' => $ebookPrice,
-        'quantity' => 1,
-        'name' => $ebookTitle,
-      ]],
+      'item_details' => $item_details,
       'customer_details' => [
-        // Menggunakan username sebagai nama depan
         'first_name' => $_SESSION['username'],
-        // Asumsi email, bisa diganti jika Anda menyimpan email user
         'email' => $_SESSION['username'] . '@bukoo.com',
       ],
     ];
 
     try {
-      // Dapatkan Snap Token dari Midtrans
       $snapToken = \Midtrans\Snap::getSnapToken($params);
-      // Kirim token kembali ke frontend
       echo json_encode(['snap_token' => $snapToken]);
     } catch (Exception $e) {
       http_response_code(500);

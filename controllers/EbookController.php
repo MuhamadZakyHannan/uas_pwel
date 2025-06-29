@@ -12,6 +12,24 @@ class EbookController
     $this->ebookModel = new Ebook();
   }
 
+  // Metode untuk menampilkan halaman detail buku
+  public function detail()
+  {
+    if (!isset($_GET['id'])) {
+      header('Location: index.php?action=list');
+      exit();
+    }
+
+    $ebook = $this->ebookModel->findById((int)$_GET['id']);
+
+    if (!$ebook) {
+      header('Location: index.php?action=list');
+      exit();
+    }
+
+    require 'views/detail.php';
+  }
+
   public function index()
   {
     // AuthController::checkUserLogin(); // <-- BARIS INI DIHAPUS
@@ -78,15 +96,17 @@ class EbookController
 
   public function update()
   {
-    AuthController::checkUserLogin(); // <-- TETAP ADA (Wajib Login)
+    AuthController::checkUserLogin();
     AuthController::checkUserRole();
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $result = $this->ebookModel->update($_POST, $_FILES);
-      if ($result > 0) {
-        header('Location: index.php?action=edit&id=' . $_POST['id'] . '&status=update_success');
-      } elseif ($result === 0) {
-        header('Location: index.php?action=edit&id=' . $_POST['id'] . '&status=no_update');
+
+      // Cek jika update berhasil atau tidak ada perubahan
+      if ($result >= 0) {
+        // Selalu redirect ke halaman list dengan status sukses
+        header('Location: index.php?action=list&status=update_success');
       } else {
+        // Redirect kembali ke halaman edit jika gagal
         header('Location: index.php?action=edit&id=' . $_POST['id'] . '&status=update_failed');
       }
       exit();

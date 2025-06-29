@@ -12,9 +12,17 @@ include 'partials/navbar.php';
       <label class="form-label" for="title">Title</label>
       <input class="form-control" id="title" name="title" type="text" placeholder="Tutorial Programming" maxlength="255" autofocus required>
     </div>
+    <div class="col-12">
+      <label for="description" class="form-label">Deskripsi</label>
+      <textarea class="form-control" id="description" name="description" rows="3" placeholder="Tulis deskripsi singkat tentang buku ini..."></textarea>
+    </div>
     <div class="col-md-6 col-lg-5">
       <label class="form-label" for="author">Author</label>
       <input class="form-control" id="author" name="author" type="text" placeholder="W3Schools" maxlength="100" required>
+    </div>
+    <div class="col-md-6 col-lg-5">
+      <label class="form-label" for="year">Tahun Terbit</label>
+      <input class="form-control" id="year" name="year" type="number" placeholder="Contoh: 2023" min="1900" max="<?= date('Y') ?>">
     </div>
     <div class="col-md-6 col-lg-5">
       <label class="form-label" for="category">Category</label>
@@ -33,6 +41,11 @@ include 'partials/navbar.php';
         <option value="Others">Others</option>
       </select>
     </div>
+    <div class="col-md-6 col-lg-5">
+      <label class="form-label" for="price">Harga (Rp)</label>
+      <input class="form-control" id="price" name="price" type="number" min="0" value="0" placeholder="Contoh: 50000" required>
+      <div class="form-text">Isi 0 jika buku ini gratis.</div>
+    </div>
     <div class="col-md-12 col-lg-10">
       <label class="form-label" for="link">Link</label>
       <div class="input-group">
@@ -40,27 +53,14 @@ include 'partials/navbar.php';
         <input class="form-control" id="link" name="link" type="text" placeholder="w3schools.com" maxlength="255" required>
       </div>
     </div>
-    <div class="col-md-6 col-lg-5">
-      <label class="form-label" for="cover">
-        Cover <span class="fw-light">(Optional)</span>
-      </label>
+    <div class="col-md-12 col-lg-10">
+      <label class="form-label" for="cover">Cover <span class="fw-light">(Optional)</span></label>
       <input class="form-control" id="cover" name="cover" type="file" accept=".jpg, .jpeg, .png" onchange="validateUploadCover()">
       <div class="form-text" id="coverInfo">Maximum File Size: 1 MB, Format File: jpg, jpeg, png</div>
     </div>
-    <div class="col-md-6 col-lg-5">
-      <label class="form-label" for="price">Harga (Rp)</label>
-      <input class="form-control" id="price" name="price" type="number" min="0" value="0" placeholder="Contoh: 50000" required>
-      <div class="form-text">Isi 0 jika buku ini gratis.</div>
-    </div>
     <div class="col-md-12 col-lg-10 mt-4 text-center">
-      <button class="btn btn-primary fw-semibold" name="submit" type="submit">Submit</button>
+      <button class="btn btn-warning fw-semibold" name="submit" type="submit">Submit</button>
     </div>
   </form>
 </main>
-
-<footer class="bg-dark text-light px-0 py-4 p-sm-4">
-  <div class="container text-center">
-    <p class="mb-0">&copy; <?= date('Y') ?> Bukoo. All rights reserved.</p>
-  </div>
-</footer>
 <?php include 'partials/footer.php'; ?>
