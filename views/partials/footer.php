@@ -1,48 +1,90 @@
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" integrity="sha384-w76AqPfDkMBDXo30jS1Sgez6pr3x5MlQ1ZAGC+nuZB+EYdgRZgiwxhTBTkF7CXvN" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.0/dist/sweetalert2.all.min.js" integrity="sha256-3A7QayeQTyaWMdcuWimEMzTIauIWscnhq/A3GfKCxiA=" crossorigin="anonymous"></script>
-<script src="assets/js/script.js"></script>
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.0/dist/sweetalert2.all.min.js"></script>
+
+<script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="SB-Mid-client-xxxxxxxxxxxxxxxxxxxx"></script>
+
+<script src="assets/js/script.js?v=<?= time(); ?>"></script>
+
 <?php if (isset($_GET['status'])): ?>
   <script>
-    // ... (kode sweetalert yang sudah ada tidak berubah) ...
     const status = "<?= htmlspecialchars($_GET['status']) ?>";
     if (status === 'create_success') {
-      Swal.fire('Sukses!', 'eBook telah ditambahkan', 'success');
-    } else if (status === 'create_failed') {
-      Swal.fire('Error!', 'Gagal menambahkan eBook. Coba lagi!', 'error');
+      Swal.fire('Sukses!', 'eBook telah berhasil ditambahkan.', 'success');
     } else if (status === 'update_success') {
-      Swal.fire('Sukses!', 'eBook telah diperbarui.', 'success');
-    } else if (status === 'no_update') {
-      Swal.fire('Tidak Ada Perubahan!', 'Data eBook tidak berubah', 'warning');
-    } else if (status === 'update_failed') {
-      Swal.fire('Error!', 'Gagal memperbarui eBook. Coba lagi!', 'error');
-    } else if (status === 'delete_success') {
-      Swal.fire('Sukses!', 'eBook telah dihapus', 'success');
-    } else if (status === 'delete_failed') {
-      Swal.fire('Error!', 'Gagal menghapus eBook. Coba lagi!', 'error');
+      Swal.fire('Sukses!', 'eBook telah berhasil diperbarui.', 'success');
     }
   </script>
 <?php endif; ?>
 
 <script>
-  const keyword = document.getElementById('keyword');
-  const content = document.getElementById('content');
+  document.addEventListener('click', function(e) {
+    // Cari elemen terdekat yang memiliki class 'buy-now-btn'
+    const buyButton = e.target.closest('.buy-now-btn');
 
-  if (keyword) {
-    keyword.addEventListener('keyup', function() {
-      const url = 'index.php?action=search&keyword=' + this.value;
+    // Jika tombol "Beli" yang diklik
+    if (buyButton) {
+      e.preventDefault(); // Mencegah link default berjalan
 
-      fetch(url, {
+      // Ambil data dari tombol
+      const ebookId = buyButton.dataset.id;
+      const ebookTitle = buyButton.dataset.title;
+      const ebookPrice = buyButton.dataset.price;
+
+      // Tampilkan pesan loading
+      Swal.fire({
+        title: 'Memproses Transaksi...',
+        text: 'Harap tunggu sebentar.',
+        allowOutsideClick: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
+      // Kirim request ke backend untuk membuat token pembayaran
+      fetch('index.php?action=create_transaction', {
+          method: 'POST',
           headers: {
-            'X-Requested-With': 'XMLHttpRequest'
+            'Content-Type': 'application/x-www-form-urlencoded'
+          },
+          body: `id=${ebookId}&title=${ebookTitle}&price=${ebookPrice}`
+        })
+        .then(response => {
+          if (!response.ok) {
+            return response.json().then(err => {
+              throw new Error(err.error || 'Terjadi kesalahan pada server.')
+            });
+          }
+          return response.json();
+        })
+        .then(data => {
+          Swal.close(); // Tutup pesan loading
+
+          if (data.snap_token) {
+            // Jika token berhasil didapat, BUKA POP-UP PEMBAYARAN MIDTRANS
+            snap.pay(data.snap_token, {
+              onSuccess: function(result) {
+                Swal.fire('Pembayaran Berhasil!', 'Terima kasih! Anda akan segera mendapatkan akses.', 'success');
+              },
+              onPending: function(result) {
+                Swal.fire('Menunggu Pembayaran', 'Selesaikan pembayaran Anda.', 'info');
+              },
+              onError: function(result) {
+                Swal.fire('Pembayaran Gagal', 'Silakan coba lagi.', 'error');
+              }
+            });
+          } else {
+            // Jika tidak ada token (misal: belum login)
+            Swal.fire('Error', data.error || 'Gagal membuat transaksi.', 'error');
           }
         })
-        .then(response => response.text())
-        .then(data => {
-          content.innerHTML = data;
-        })
-        .catch(error => console.error('Error:', error));
-    });
-  }
+        .catch(error => {
+          Swal.close();
+          Swal.fire('Error', error.message, 'error');
+        });
+    }
+  });
 </script>
 
 </body>

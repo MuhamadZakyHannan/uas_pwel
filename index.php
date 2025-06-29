@@ -1,15 +1,19 @@
 <?php
 session_start();
+// Memuat semua library dari Composer
+require_once 'vendor/autoload.php';
 
 require_once 'config/database.php';
 require_once 'controllers/HomeController.php';
 require_once 'controllers/EbookController.php';
 require_once 'controllers/AuthController.php';
+// Memanggil Controller Pembayaran yang baru
+require_once 'controllers/PaymentController.php';
 
 $action = $_GET['action'] ?? 'home';
 
 switch ($action) {
-  // Auth Routes
+  // Rute Autentikasi
   case 'login':
     $controller = new AuthController();
     $controller->login();
@@ -23,7 +27,7 @@ switch ($action) {
     $controller->logout();
     break;
 
-  // Ebook Routes
+  // Rute eBook
   case 'list':
     $controller = new EbookController();
     $controller->index();
@@ -53,7 +57,13 @@ switch ($action) {
     $controller->search();
     break;
 
-  // Home Route
+  // Rute Pembayaran
+  case 'create_transaction':
+    $controller = new PaymentController();
+    $controller->createTransaction();
+    break;
+
+  // Rute Beranda
   case 'home':
   default:
     $controller = new HomeController();

@@ -37,35 +37,27 @@ class Ebook
     $title = htmlspecialchars($data['title']);
     $author = htmlspecialchars($data['author']);
     $category = htmlspecialchars($data['category']);
-    $type = htmlspecialchars($data['type']);
+    $price = (int)htmlspecialchars($data['price'] ?? 0);
+    $type = ($price > 0) ? 'Paid' : 'Free'; // Tipe ditentukan otomatis dari harga
     $link = htmlspecialchars($data['link']);
     $cover = $this->uploadCover($files['cover']);
 
-    if (empty($title) || empty($author) || empty($category) || empty($type) || empty($link)) {
-      return false;
+    if ($cover === false) return false;
+    if (is_null($cover)) $cover = 'default-cover.jpg';
+    if (!filter_var($link, FILTER_VALIDATE_URL)) $link = "https://$link";
+
+    $query = "INSERT INTO ebooks (added_by, title, author, category, type, price, link, cover, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Verified')";
+    $stmt = mysqli_prepare($conn, $query);
+
+    // Error handling jika query gagal
+    if ($stmt === false) {
+      die('MySQL prepare error: ' . mysqli_error($conn));
     }
 
-    if ($cover === false) {
-      return false;
-    }
+    mysqli_stmt_bind_param($stmt, "ssssisss", $username, $title, $author, $category, $type, $price, $link, $cover);
+    mysqli_stmt_execute($stmt);
 
-    if (is_null($cover)) {
-      $cover = 'default-cover.jpg';
-    }
-
-    if (!filter_var($link, FILTER_VALIDATE_URL)) {
-      $link = "https://$link";
-    } else {
-      $link = str_replace('http://', 'https://', $link);
-    }
-
-    mysqli_query($conn, "INSERT INTO ebooks (added_by, title, author, category, type, link, cover) VALUES ('$username', '$title', '$author', '$category', '$type', '$link', '$cover')");
-
-    if (mysqli_affected_rows($conn) < 0 && $cover !== 'default-cover.jpg') {
-      unlink("assets/img/ebook/$cover");
-    }
-
-    return mysqli_affected_rows($conn);
+    return mysqli_stmt_affected_rows($stmt);
   }
 
   public function update($data, $files)
@@ -75,37 +67,29 @@ class Ebook
     $title = htmlspecialchars($data['title']);
     $author = htmlspecialchars($data['author']);
     $category = htmlspecialchars($data['category']);
-    $type = htmlspecialchars($data['type']);
+    $price = (int)htmlspecialchars($data['price'] ?? 0);
+    $type = ($price > 0) ? 'Paid' : 'Free';
     $link = htmlspecialchars($data['link']);
     $status = htmlspecialchars($data['status']);
     $oldCover = htmlspecialchars($data['oldCover']);
-
     $cover = $this->uploadCover($files['cover']);
 
-    if (empty($id) || empty($title) || empty($author) || empty($category) || empty($type) || empty($link) || empty($status) || empty($oldCover)) {
-      return false;
+    if (is_null($cover)) $cover = $oldCover;
+    elseif ($cover === false) return false;
+
+    $query = "UPDATE ebooks SET title = ?, author = ?, category = ?, type = ?, price = ?, link = ?, status = ?, cover = ? WHERE id = ?";
+    $stmt = mysqli_prepare($conn, $query);
+
+    if ($stmt === false) {
+      die('MySQL prepare error: ' . mysqli_error($conn));
     }
 
-    if (is_null($cover)) {
-      $cover = $oldCover;
-    } elseif ($cover === false) {
-      return false;
-    }
+    mysqli_stmt_bind_param($stmt, "ssssisssi", $title, $author, $category, $type, $price, $link, $status, $cover, $id);
+    mysqli_stmt_execute($stmt);
 
-    if (!filter_var($link, FILTER_VALIDATE_URL) && !str_contains($link, 'https://')) {
-      $link = "https://$link";
-    } else {
-      $link = str_replace('http://', 'https://', $link);
-    }
-
-    mysqli_query($conn, "UPDATE ebooks SET title = '$title', author = '$author', category = '$category', type = '$type', link = '$link', status = '$status', cover = '$cover' WHERE id = $id");
-
-    $affected_rows = mysqli_affected_rows($conn);
-
+    $affected_rows = mysqli_stmt_affected_rows($stmt);
     if ($affected_rows > 0 && $cover !== $oldCover && $oldCover !== 'default-cover.jpg') {
       unlink("assets/img/ebook/$oldCover");
-    } elseif ($affected_rows < 0 && $cover !== $oldCover) {
-      unlink("assets/img/ebook/$cover");
     }
 
     return $affected_rows;
@@ -116,21 +100,24 @@ class Ebook
     $conn = connect();
     $id = htmlspecialchars($id);
     $ebook = $this->findById($id);
-    $cover = $ebook['cover'];
+    if ($ebook) {
+      $cover = $ebook['cover'];
+      mysqli_query($conn, "DELETE FROM ebooks WHERE id = $id");
+      $affected_rows = mysqli_affected_rows($conn);
 
-    mysqli_query($conn, "DELETE FROM ebooks WHERE id = $id");
-    $affected_rows = mysqli_affected_rows($conn);
-
-    if ($affected_rows > 0 && $cover !== 'default-cover.jpg') {
-      unlink("assets/img/ebook/$cover");
+      if ($affected_rows > 0 && $cover !== 'default-cover.jpg' && file_exists("assets/img/ebook/$cover")) {
+        unlink("assets/img/ebook/$cover");
+      }
+      return $affected_rows;
     }
-    return $affected_rows;
+    return 0;
   }
 
   public function search($keyword, $index = null, $limit = null)
   {
     $conn = connect();
-    $query = "SELECT * FROM ebooks WHERE title LIKE '%$keyword%' OR author LIKE '%$keyword%' OR category LIKE '%$keyword%' OR type LIKE '%$keyword%' OR status LIKE '%$keyword%' ORDER BY id DESC";
+    $keyword = mysqli_real_escape_string($conn, $keyword);
+    $query = "SELECT * FROM ebooks WHERE title LIKE '%$keyword%' OR author LIKE '%$keyword%' OR category LIKE '%$keyword%' ORDER BY id DESC";
     if ($index !== null && $limit !== null) {
       $query .= " LIMIT $index, $limit";
     }
@@ -141,78 +128,19 @@ class Ebook
   public function countSearch($keyword)
   {
     $conn = connect();
-    $result = mysqli_query($conn, "SELECT COUNT(*) as total FROM ebooks WHERE title LIKE '%$keyword%' OR author LIKE '%$keyword%' OR category LIKE '%$keyword%' OR type LIKE '%$keyword%' OR status LIKE '%$keyword%'");
+    $keyword = mysqli_real_escape_string($conn, $keyword);
+    $result = mysqli_query($conn, "SELECT COUNT(*) as total FROM ebooks WHERE title LIKE '%$keyword%' OR author LIKE '%$keyword%' OR category LIKE '%$keyword%'");
     return mysqli_fetch_assoc($result)['total'];
   }
 
   private function uploadCover($coverFile)
   {
-    $coverName = $coverFile['name'];
-    $coverType = $coverFile['type'];
-    $coverTmpName = $coverFile['tmp_name'];
-    $coverError = $coverFile['error'];
-    $coverSize = $coverFile['size'];
-
-    if ($coverError === 4) {
-      return null; // Tidak ada file yang diunggah
-    }
-
-    $coverExtension = strtolower(pathinfo($coverName, PATHINFO_EXTENSION));
+    if (!isset($coverFile) || $coverFile['error'] === 4) return null;
     $allowedExtensions = ['jpg', 'jpeg', 'png'];
-
-    if (!in_array($coverExtension, $allowedExtensions) || ($coverType !== 'image/jpeg' && $coverType !== 'image/png') || $coverSize > 1048576) {
-      return false; // Validasi gagal
-    }
-
-    $newId = $this->getNewId();
-
-    if ($newId < 10) {
-      $newCoverName = 'IMG-' . date('dmY') . "-EA00$newId.$coverExtension";
-    } elseif ($newId < 100) {
-      $newCoverName = 'IMG-' . date('dmY') . "-EA0$newId.$coverExtension";
-    } else {
-      $newCoverName = 'IMG-' . date('dmY') . "-EA$newId.$coverExtension";
-    }
-
-    $pathFile = "assets/img/ebook/$newCoverName";
-
-    if (file_exists($pathFile)) {
-      return false; // File sudah ada
-    }
-
-    move_uploaded_file($coverTmpName, $pathFile);
+    $coverExtension = strtolower(pathinfo($coverFile['name'], PATHINFO_EXTENSION));
+    if (!in_array($coverExtension, $allowedExtensions) || $coverFile['size'] > 1048576) return false;
+    $newCoverName = uniqid('cover-') . '.' . $coverExtension;
+    move_uploaded_file($coverFile['tmp_name'], 'assets/img/ebook/' . $newCoverName);
     return $newCoverName;
-  }
-
-  private function getNewId()
-  {
-    $conn = connect();
-    $result = mysqli_query($conn, "SELECT cover FROM ebooks ORDER BY id DESC");
-    $ebooks = mysqli_fetch_all($result, MYSQLI_ASSOC);
-
-    if (!empty($ebooks)) {
-      foreach ($ebooks as $ebook) {
-        if (strpos($ebook['cover'], 'IMG') !== false) {
-          $cover = $ebook['cover'];
-          break;
-        }
-      }
-      if (isset($cover)) {
-        $coverParts = explode('-', $cover);
-        $coverDate = $coverParts[1] ?? null;
-        $coverIdPart = $coverParts[2] ?? null;
-
-        if ($coverDate === date('dmY') && $coverIdPart) {
-          $newId = (int)explode('EA', $coverIdPart)[1] + 1;
-        } else {
-          $newId = 1;
-        }
-      } else {
-        $newId = 1;
-      }
-    } else {
-      $newId = 1;
-    }
-    return $newId;
   }
 }
