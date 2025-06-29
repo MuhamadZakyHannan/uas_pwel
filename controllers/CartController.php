@@ -11,13 +11,9 @@ class CartController
         }
     }
 
-    public function clearCart()
-    {
-        $_SESSION['cart'] = [];
-        header('Location: index.php?action=cart');
-        exit();
-    }
-
+    /**
+     * Menambahkan item ke keranjang. Tidak menambah kuantitas jika sudah ada.
+     */
     public function addToCart()
     {
         header('Content-Type: application/json');
@@ -28,22 +24,25 @@ class CartController
 
         $ebookId = (int)$_POST['id'];
 
-        if (isset($_SESSION['cart'][$ebookId])) {
-            $_SESSION['cart'][$ebookId]++;
-            $message = 'Kuantitas buku di keranjang diperbarui!';
-        } else {
+        // Logika Baru: Hanya tambahkan jika BELUM ada di keranjang
+        if (!isset($_SESSION['cart'][$ebookId])) {
+            // Set kuantitas default ke 1
             $_SESSION['cart'][$ebookId] = 1;
             $message = 'Buku berhasil ditambahkan ke keranjang!';
+        } else {
+            // Beri pesan bahwa item sudah ada
+            $message = 'Buku sudah ada di dalam keranjang.';
         }
 
-        $totalItems = 0;
-        foreach ($_SESSION['cart'] as $quantity) {
-            $totalItems += $quantity;
-        }
+        // --- LOGIKA PENGHITUNGAN JUMLAH UNIK ---
+        $uniqueItemCount = count($_SESSION['cart']);
 
-        echo json_encode(['success' => true, 'message' => $message, 'cart_count' => $totalItems]);
+        echo json_encode(['success' => true, 'message' => $message, 'cart_count' => $uniqueItemCount]);
     }
 
+    /**
+     * Menampilkan halaman keranjang.
+     */
     public function viewCart()
     {
         $cart_items = [];
@@ -64,6 +63,19 @@ class CartController
         require 'views/cart.php';
     }
 
+    /**
+     * Membersihkan semua item dari keranjang.
+     */
+    public function clearCart()
+    {
+        $_SESSION['cart'] = [];
+        header('Location: index.php?action=cart');
+        exit();
+    }
+
+    /**
+     * Menghapus satu item dari keranjang.
+     */
     public function removeFromCart()
     {
         if (isset($_GET['id'])) {
@@ -76,6 +88,9 @@ class CartController
         exit();
     }
 
+    /**
+     * Memperbarui kuantitas item di keranjang via AJAX.
+     */
     public function updateQuantity()
     {
         header('Content-Type: application/json');
@@ -93,21 +108,22 @@ class CartController
 
             $ebookModel = new Ebook();
             $total_price = 0;
-            $total_items = 0;
+            // Hitung kembali jumlah item unik
+            $uniqueItemCount = count($_SESSION['cart']);
+
             if (!empty($_SESSION['cart'])) {
                 foreach ($_SESSION['cart'] as $id => $qty) {
                     $item = $ebookModel->findById($id);
                     if ($item) {
                         $total_price += (int)$item['price'] * $qty;
                     }
-                    $total_items += $qty;
                 }
             }
 
             echo json_encode([
                 'success' => true,
                 'new_total_price' => 'Rp ' . number_format($total_price),
-                'new_cart_count' => $total_items
+                'new_cart_count' => $uniqueItemCount // Kirim jumlah unik
             ]);
             exit();
         }

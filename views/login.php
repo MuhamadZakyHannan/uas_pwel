@@ -1,56 +1,56 @@
 <?php
-$title = 'Sign in to Bukoo';
-$htmlClass = 'h-100';
-// Gunakan class auth-bg untuk background gradien
-$bodyClass = 'auth-bg';
+$title = 'Sign In - Bukoo';
 include 'partials/header.php';
 ?>
 
-<div class="auth-container">
-  <div class="card auth-card shadow-lg">
-    <div class="row g-0">
-      <div class="col-md-6 d-none d-md-flex auth-card-right">
-        <div class="text-center">
-          <img src="assets/img/logo_bukoo.png" alt="Bukoo Logo" style="width: 120px;">
-          <h2 class="mt-4 text-white">Bukoo</h2>
-          <p class="text-white-50 mt-2">Perpustakaan digital Anda, di mana saja.</p>
-        </div>
-      </div>
-      <div class="col-md-6">
-        <div class="auth-card-left">
-          <div class="text-center mb-4">
-            <h1 class="h3 fw-bold">Selamat Datang Kembali!</h1>
+<div class="auth-bg">
+  <div class="container auth-container">
+    <div class="card auth-card shadow-lg">
+      <div class="row g-0">
+        <div class="col-md-6 auth-card-left">
+          <div class="text-center mb-5">
+            <a class="navbar-brand d-inline-flex align-items-center" href="index.php?action=home">
+              <img class="me-2" src="assets/img/logo_bukoo.png" style="width: 40px;">
+              <span class="fw-bold fs-3 text-info">Bukoo</span>
+            </a>
+            <h1 class="h3 mt-3">Selamat Datang Kembali</h1>
             <p class="text-muted">Silakan masuk untuk melanjutkan.</p>
           </div>
 
           <?php if (isset($error)): ?>
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-              Username atau password salah!
-              <button class="btn-close" data-bs-dismiss="alert" type="button" aria-label="Close"></button>
+            <div class="alert alert-danger" role="alert">
+              <?= $error ?>
             </div>
           <?php endif; ?>
 
           <form action="index.php?action=login" method="POST" autocomplete="off">
-            <div class="form-floating mb-3">
-              <input class="form-control" id="username" name="username" type="text" placeholder="Username" maxlength="20" autofocus required>
-              <label for="username">Username</label>
+            <div class="mb-3">
+              <label for="username" class="form-label">Username</label>
+              <input type="text" class="form-control" name="username" id="username" autofocus required>
             </div>
-            <div class="form-floating mb-3">
-              <input class="form-control" id="password" name="password" type="password" placeholder="Password" required>
-              <label for="password">Password</label>
+            <div class="mb-3">
+              <label for="password" class="form-label">Password</label>
+              <input type="password" class="form-control" name="password" id="password" required>
             </div>
-            <div class="form-check mb-3">
-              <input class="form-check-input" id="remember" name="remember" type="checkbox">
-              <label class="form-check-label" for="remember">Ingat saya</label>
+
+            <div class="mb-3 form-check">
+              <input type="checkbox" class="form-check-input" id="remember" name="remember">
+              <label class="form-check-label" for="remember">Ingat Saya</label>
             </div>
-            <button class="w-100 btn btn-primary btn-lg fw-semibold" name="signin" type="submit">Sign In</button>
-            <div class="text-center my-3">
-              <small>
-                Belum punya akun?
-                <a class="link-primary text-decoration-none fw-bold" href="index.php?action=signup">Daftar di sini</a>
-              </small>
+
+            <div class="d-grid">
+              <button type="submit" class="btn btn-primary btn-lg fw-semibold">Sign In</button>
             </div>
           </form>
+          <div class="text-center mt-4">
+            <p class="text-muted">Belum punya akun? <a href="index.php?action=signup" class="link-primary text-decoration-none">Buat akun</a></p>
+          </div>
+        </div>
+        <div class="col-md-6 auth-card-right d-none d-md-flex">
+          <div class="text-center text-white">
+            <h2 class="mb-3">Jelajahi Dunia Pengetahuan</h2>
+            <p>Ribuan buku digital menanti untuk Anda baca dan pelajari.</p>
+          </div>
         </div>
       </div>
     </div>

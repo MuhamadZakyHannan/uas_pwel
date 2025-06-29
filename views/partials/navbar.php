@@ -1,20 +1,18 @@
 <?php
-$totalCartItems = 0;
-if (isset($_SESSION['cart']) && is_array($_SESSION['cart'])) {
-  foreach ($_SESSION['cart'] as $quantity) {
-    if (is_numeric($quantity)) {
-      $totalCartItems += $quantity;
-    }
-  }
-}
+// --- LOGIKA PENGHITUNGAN JUMLAH UNIK YANG DIPERBAIKI ---
+// Cukup hitung jumlah elemen di dalam array keranjang
+$uniqueItemCount = isset($_SESSION['cart']) && is_array($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
 ?>
+
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
   <div class="container">
     <a class="navbar-brand d-flex align-items-center" href="index.php?action=home">
       <img class="me-2" src="assets/img/logo_bukoo.png" style="width: 35px;">
       <span class="fw-bold fs-4 text-info">Bukoo</span>
     </a>
-    <button class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbarNav"><span class="navbar-toggler-icon"></span></button>
+    <button class="navbar-toggler" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+      <span class="navbar-toggler-icon"></span>
+    </button>
     <div class="collapse navbar-collapse" id="navbarNav">
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
         <li class="nav-item"><a class="nav-link" href="index.php?action=home">Home</a></li>
@@ -23,16 +21,19 @@ if (isset($_SESSION['cart']) && is_array($_SESSION['cart'])) {
           <li class="nav-item"><a class="nav-link" href="index.php?action=create">Tambah eBook</a></li>
         <?php endif; ?>
       </ul>
+
       <ul class="navbar-nav ms-auto mb-2 mb-lg-0 align-items-center">
         <li class="nav-item">
           <a class="nav-link" href="index.php?action=cart">
             <i class="bi bi-cart-fill fs-5"></i>
-            <span class="badge rounded-pill bg-danger" id="cart-count"><?= $totalCartItems ?></span>
+            <span class="badge rounded-pill bg-danger" id="cart-count"><?= $uniqueItemCount ?></span>
           </a>
         </li>
         <?php if (isset($_SESSION['username'])): ?>
           <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown"><?= htmlspecialchars($_SESSION['username']) ?></a>
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+              <?= htmlspecialchars($_SESSION['username']) ?>
+            </a>
             <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
               <li><a class="dropdown-item text-danger" href="index.php?action=logout">Logout</a></li>
             </ul>
