@@ -1,7 +1,7 @@
 <?php
 session_start();
 // Memuat semua library dari Composer (termasuk Midtrans)
-require_once 'vendor/autoload.php';
+// require_once 'vendor/autoload.php';
 
 // Memuat semua file konfigurasi dan controller yang dibutuhkan
 require_once 'config/database.php';

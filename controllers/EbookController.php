@@ -12,12 +12,8 @@ class EbookController
     $this->ebookModel = new Ebook();
   }
 
-  /**
-   * Menampilkan halaman utama daftar buku dengan paginasi.
-   */
   public function index()
   {
-    // Mengatur item per halaman menjadi 6
     $ebookPerPage = 6;
     $totalEbook = $this->ebookModel->countAll();
     $totalPage = ceil($totalEbook / $ebookPerPage);
@@ -25,15 +21,10 @@ class EbookController
     $index = ($activePage - 1) * $ebookPerPage;
     $ebooks = $this->ebookModel->getAll($index, $ebookPerPage);
 
-    // Inisialisasi keyword agar tidak error di view saat halaman list biasa dimuat
     $keyword = '';
-
     require 'views/list.php';
   }
 
-  /**
-   * Menangani pencarian buku, baik untuk request biasa maupun AJAX.
-   */
   public function search()
   {
     $keyword = htmlspecialchars($_GET['keyword'] ?? '');
@@ -44,57 +35,41 @@ class EbookController
     $index = ($activePage - 1) * $ebookPerPage;
     $ebooks = $this->ebookModel->search($keyword, $index, $ebookPerPage);
 
-    // Cek jika request datang dari JavaScript (AJAX)
     if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
-      // Jika ya, hanya kirim file hasil pencarian (tanpa header/footer)
       require 'views/ajax_search_results.php';
     } else {
-      // Jika tidak, muat halaman lengkap seperti biasa
       require 'views/list.php';
     }
   }
 
-  /**
-   * Menampilkan halaman detail satu buku.
-   */
   public function detail()
   {
     if (!isset($_GET['id'])) {
       header('Location: index.php?action=list');
       exit();
     }
-
     $ebook = $this->ebookModel->findById((int)$_GET['id']);
-
     if (!$ebook) {
       header('Location: index.php?action=list');
       exit();
     }
-
     require 'views/detail.php';
   }
 
-  /**
-   * Menampilkan form untuk membuat eBook baru.
-   */
   public function create()
   {
     AuthController::checkUserLogin();
+    AuthController::checkUserRole();
     require 'views/create.php';
   }
 
-  /**
-   * Memproses data dari form dan menyimpan eBook baru.
-   */
   public function store()
   {
     AuthController::checkUserLogin();
+    AuthController::checkUserRole();
+
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-      if (!validate_csrf_token()) die('Invalid CSRF token');
-
       $result = $this->ebookModel->create($_POST, $_FILES);
-      unset_csrf_token();
-
       if ($result > 0) {
         header('Location: index.php?action=list&status=create_success');
       } else {
@@ -104,9 +79,6 @@ class EbookController
     }
   }
 
-  /**
-   * Menampilkan form untuk mengedit eBook.
-   */
   public function edit()
   {
     AuthController::checkUserLogin();
@@ -119,19 +91,12 @@ class EbookController
     require 'views/update.php';
   }
 
-  /**
-   * Memproses data dari form dan memperbarui eBook.
-   */
   public function update()
   {
     AuthController::checkUserLogin();
     AuthController::checkUserRole();
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-      if (!validate_csrf_token()) die('Invalid CSRF token');
-
       $result = $this->ebookModel->update($_POST, $_FILES);
-      unset_csrf_token();
-
       if ($result >= 0) {
         header('Location: index.php?action=list&status=update_success');
       } else {
@@ -141,9 +106,6 @@ class EbookController
     }
   }
 
-  /**
-   * Menghapus eBook.
-   */
   public function delete()
   {
     AuthController::checkUserLogin();

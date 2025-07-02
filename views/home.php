@@ -61,7 +61,7 @@ include 'partials/navbar.php';
             <i class="bi bi-search-heart-fill fs-2"></i>
           </div>
           <h4 class="fw-bold mb-3">Penemuan Mudah</h4>
-          <p class="text-muted">Temukan buku favorit Anda berikutnya dengan sistem pencarian dan rekomendasi canggih kami.</p>
+          <p class="text-muted">Temukan buku favorit Anda berikutnya dengan sistem kami.</p>
         </div>
       </div>
       <div class="col-lg-4 col-md-6">
@@ -69,8 +69,8 @@ include 'partials/navbar.php';
           <div class="feature-icon-bg bg-info mx-auto mb-3">
             <i class="bi bi-cloud-arrow-down-fill fs-2"></i>
           </div>
-          <h4 class="fw-bold mb-3">Penyimpanan Cloud</h4>
-          <p class="text-muted">Buku Anda disimpan dengan aman di cloud. Jangan pernah kehilangan progres dan akses dari mana saja.</p>
+          <h4 class="fw-bold mb-3">Koleksi Lengkap</h4>
+          <p class="text-muted">Temukan ribuan buku dari berbagai kategori seperti fiksi, non-fiksi, pendidikan, dan banyak lagi. Semua tersedia dalam satu tempat untuk pengalaman membaca terbaik Anda.</p>
         </div>
       </div>
     </div>

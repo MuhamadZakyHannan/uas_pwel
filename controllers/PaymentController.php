@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../config/midtrans.php';
+// require_once __DIR__ . '/../config/midtrans.php';
 require_once __DIR__ . '/../models/Ebook.php';
 
 class PaymentController
