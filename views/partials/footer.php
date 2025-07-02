@@ -1,4 +1,8 @@
-
+<footer class="home-footer py-5 bg-dark text-white">
+  <div class="container text-center">
+    <p class="text-white-50 mb-0">&copy; <?= date('Y') ?> Bukoo. All rights reserved.</p>
+  </div>
+</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.0/dist/sweetalert2.all.min.js"></script>
@@ -45,6 +49,24 @@
         });
       }
     }
+
+    // --- LOGIKA UNTUK NOTIFIKASI SETELAH REDIRECT ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const status = urlParams.get('status');
+
+    if (status === 'create_success') {
+      Swal.fire('Sukses!', 'eBook telah berhasil ditambahkan.', 'success');
+    } else if (status === 'update_success') {
+      Swal.fire({
+        icon: 'success',
+        title: 'Berhasil!',
+        text: 'Data eBook telah berhasil diperbarui.',
+        timer: 2000,
+        showConfirmButton: false
+      }).then(() => {
+        window.history.replaceState(null, null, window.location.pathname + "?action=list");
+      });
+    }
   });
 
   // --- Event Listener untuk Aksi KLIK (Beli, Keranjang, Checkout) ---
@@ -64,7 +86,8 @@
           body: `id=${addToCartButton.dataset.id}`
         })
         .then(response => response.json())
-        .then(handleCartUpdate);
+        .then(handleCartUpdate)
+        .catch(error => console.error('Error:', error));
     }
 
     // Logika Tombol BELI SEKARANG
@@ -72,6 +95,7 @@
       e.preventDefault();
       Swal.fire({
         title: 'Memproses...',
+        allowOutsideClick: false,
         didOpen: () => Swal.showLoading()
       });
       fetch('index.php?action=create_transaction', {
@@ -81,7 +105,9 @@
           },
           body: `ebook_id=${buyNowButton.dataset.id}`
         })
-        .then(res => res.json()).then(handleSnapPay);
+        .then(handleFetchResponse)
+        .then(handleSnapPay)
+        .catch(handleFetchError);
     }
 
     // Logika Tombol CHECKOUT KERANJANG
@@ -89,12 +115,15 @@
       e.preventDefault();
       Swal.fire({
         title: 'Memproses Keranjang...',
+        allowOutsideClick: false,
         didOpen: () => Swal.showLoading()
       });
       fetch('index.php?action=create_transaction', {
           method: 'POST'
         })
-        .then(res => res.json()).then(handleSnapPay);
+        .then(handleFetchResponse)
+        .then(handleSnapPay)
+        .catch(handleFetchError);
     }
   });
 
@@ -117,8 +146,12 @@
         .then(response => response.json())
         .then(data => {
           if (data.success) {
-            document.getElementById('total-price-display').innerText = data.new_total_price;
-            document.getElementById('cart-count').innerText = data.new_cart_count;
+            if (document.getElementById('total-price-display')) {
+              document.getElementById('total-price-display').innerText = data.new_total_price;
+            }
+            if (document.getElementById('cart-count')) {
+              document.getElementById('cart-count').innerText = data.new_cart_count;
+            }
             if (quantity == 0) {
               input.closest('.cart-item-row').remove();
               if (data.new_cart_count <= 0) location.reload();
@@ -129,6 +162,21 @@
   });
 
   // --- FUNGSI HELPER ---
+
+  // Fungsi untuk menangani response dari fetch agar lebih aman
+  function handleFetchResponse(response) {
+    const contentType = response.headers.get("content-type");
+    if (contentType && contentType.indexOf("application/json") !== -1) {
+      if (!response.ok) {
+        return response.json().then(err => {
+          throw new Error(err.error || 'Terjadi kesalahan pada server.');
+        });
+      }
+      return response.json();
+    } else {
+      throw new Error('Server tidak merespons dengan benar. Cek log server untuk melihat error PHP.');
+    }
+  }
 
   // Fungsi untuk menangani update tampilan keranjang setelah AJAX
   function handleCartUpdate(data) {
@@ -152,16 +200,25 @@
 
   // Fungsi untuk menangani pembayaran Midtrans
   function handleSnapPay(data) {
-    Swal.close();
     if (data.snap_token) {
+      Swal.close();
       snap.pay(data.snap_token, {
-        onSuccess: (result) => Swal.fire('Pembayaran Berhasil!', 'Terima kasih!', 'success'),
+        onSuccess: (result) => {
+          Swal.fire('Pembayaran Berhasil!', 'Mengarahkan ke halaman invoice...', 'success')
+            .then(() => window.location.href = `index.php?action=invoice&order_id=${result.order_id}`);
+        },
         onPending: (result) => Swal.fire('Menunggu Pembayaran', 'Selesaikan pembayaran Anda.', 'info'),
         onError: (result) => Swal.fire('Pembayaran Gagal', 'Silakan coba lagi.', 'error')
       });
     } else {
       Swal.fire('Error', data.error || 'Gagal memproses transaksi.', 'error');
     }
+  }
+
+  // Fungsi untuk menangani error pada fetch
+  function handleFetchError(error) {
+    Swal.close();
+    Swal.fire('Error', error.message, 'error');
   }
 </script>
 

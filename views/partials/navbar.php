@@ -1,5 +1,5 @@
 <?php
-// Logika untuk menghitung total item di keranjang
+// Logika untuk menghitung jumlah item unik di keranjang
 $uniqueItemCount = isset($_SESSION['cart']) && is_array($_SESSION['cart']) ? count($_SESSION['cart']) : 0;
 ?>
 
@@ -16,11 +16,8 @@ $uniqueItemCount = isset($_SESSION['cart']) && is_array($_SESSION['cart']) ? cou
       <ul class="navbar-nav me-auto mb-2 mb-lg-0">
         <li class="nav-item"><a class="nav-link" href="index.php?action=home">Home</a></li>
         <li class="nav-item"><a class="nav-link" href="index.php?action=list">Koleksi</a></li>
-
         <?php if (isset($_SESSION['username']) && isset($_SESSION['role']) && $_SESSION['role'] === 'admin'): ?>
-          <li class="nav-item">
-            <a class="nav-link" href="index.php?action=create">Tambah eBook</a>
-          </li>
+          <li class="nav-item"><a class="nav-link" href="index.php?action=create">Tambah eBook</a></li>
         <?php endif; ?>
       </ul>
       <form class="d-flex w-50 me-auto" action="index.php" method="GET" id="search-form-nav">
@@ -40,11 +37,11 @@ $uniqueItemCount = isset($_SESSION['cart']) && is_array($_SESSION['cart']) ? cou
               <?= htmlspecialchars($_SESSION['username']) ?>
             </a>
             <ul class="dropdown-menu dropdown-menu-dark dropdown-menu-end">
-              <li><a class="dropdown-item" href="index.php?action=history">Riwayat Transaksi</a></li>
+              <li><a class="dropdown-item" href="index.php?action=history"><i class="bi bi-clock-history me-2"></i>Riwayat Transaksi</a></li>
               <li>
                 <hr class="dropdown-divider">
               </li>
-              <li><a class="dropdown-item text-danger" href="index.php?action=logout">Logout</a></li>
+              <li><a class="dropdown-item text-danger" href="index.php?action=logout"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
             </ul>
           </li>
         <?php else: ?>

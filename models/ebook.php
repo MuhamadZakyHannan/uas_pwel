@@ -1,222 +1,190 @@
 <?php
 
-require_once __DIR__ . '/../config/database.php';
-
 class Ebook
 {
-  /**
-   * Mengambil semua eBook dari database dengan paginasi.
-   */
-  public function getAll($index = null, $limit = null)
+  private $conn;
+
+  public function __construct()
   {
-    $conn = connect();
-    $query = "SELECT * FROM ebooks ORDER BY id DESC";
-    if ($index !== null && $limit !== null) {
-      $query .= " LIMIT ?, ?";
-      $stmt = mysqli_prepare($conn, $query);
-      mysqli_stmt_bind_param($stmt, 'ii', $index, $limit);
-      mysqli_stmt_execute($stmt);
-      $result = mysqli_stmt_get_result($stmt);
-    } else {
-      $result = mysqli_query($conn, $query);
-    }
-    return mysqli_fetch_all($result, MYSQLI_ASSOC);
+    $this->conn = connect();
   }
 
-  /**
-   * Menghitung total semua eBook di database.
-   */
-  public function countAll()
+  // --- Fungsi-fungsi untuk mengambil data ---
+
+  public function getAll($index, $limit)
   {
-    $conn = connect();
-    $result = mysqli_query($conn, "SELECT COUNT(*) as total FROM ebooks");
-    return mysqli_fetch_assoc($result)['total'];
+    $stmt = $this->conn->prepare("SELECT * FROM ebooks ORDER BY id DESC LIMIT ?, ?");
+    $stmt->bind_param('ii', $index, $limit);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
   }
 
-  /**
-   * Mencari satu eBook berdasarkan ID-nya.
-   */
   public function findById($id)
   {
-    $conn = connect();
-    $id = (int)$id;
-    $stmt = mysqli_prepare($conn, "SELECT * FROM ebooks WHERE id = ?");
-    mysqli_stmt_bind_param($stmt, 'i', $id);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-    return mysqli_fetch_assoc($result);
+    $stmt = $this->conn->prepare("SELECT * FROM ebooks WHERE id = ?");
+    $stmt->bind_param('i', $id);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_assoc();
   }
 
-  /**
-   * Membuat entri eBook baru di database dengan aman menggunakan Prepared Statements.
-   */
+  public function countAll()
+  {
+    $result = $this->conn->query("SELECT COUNT(id) as total FROM ebooks");
+    return $result->fetch_assoc()['total'];
+  }
+
+  public function countSearch($keyword)
+  {
+    $query_keyword = "%" . $keyword . "%";
+    $stmt = $this->conn->prepare("SELECT COUNT(id) as total FROM ebooks WHERE title LIKE ? OR author LIKE ?");
+    $stmt->bind_param('ss', $query_keyword, $query_keyword);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_assoc()['total'];
+  }
+
+  public function search($keyword, $index, $limit)
+  {
+    $query_keyword = "%" . $keyword . "%";
+    $stmt = $this->conn->prepare("SELECT * FROM ebooks WHERE title LIKE ? OR author LIKE ? ORDER BY id DESC LIMIT ?, ?");
+    $stmt->bind_param('ssii', $query_keyword, $query_keyword, $index, $limit);
+    $stmt->execute();
+    return $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+  }
+
+  // --- Fungsi-fungsi untuk memodifikasi data (CRUD) ---
+
   public function create($data, $files)
   {
-    $conn = connect();
-    // Sanitasi dan persiapan data
-    $username = $_SESSION['username'];
-    $title = htmlspecialchars($data['title']);
-    $description = htmlspecialchars($data['description'] ?? '');
-    $author = htmlspecialchars($data['author']);
-    $year = !empty($data['year']) ? htmlspecialchars($data['year']) : null;
-    $category = htmlspecialchars($data['category']);
-    $price = (int)htmlspecialchars($data['price'] ?? 0);
-    $type = ($price > 0) ? 'Paid' : 'Free';
-    $link = htmlspecialchars($data['link']);
-    $cover = $this->uploadCover($files['cover']);
+    $_FILES = $files; // Set global $_FILES agar bisa dibaca oleh uploadCover()
 
-    if ($cover === false) return false;
-    if (is_null($cover)) $cover = 'default-cover.jpg';
-
-    // Menggunakan Prepared Statement untuk mencegah SQL Injection
-    $query = "INSERT INTO ebooks (added_by, title, description, author, year, category, type, price, link, cover, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Verified')";
-    $stmt = mysqli_prepare($conn, $query);
-
-    if ($stmt === false) {
-      error_log('MySQL prepare error: ' . mysqli_error($conn));
-      return -1;
+    $newCoverName = $this->uploadCover();
+    if ($newCoverName === false) {
+      return 0; // Gagal upload, hentikan proses
     }
 
-    mysqli_stmt_bind_param($stmt, "ssssssssis", $username, $title, $description, $author, $year, $category, $type, $price, $link, $cover);
-    mysqli_stmt_execute($stmt);
+    // Gunakan cover baru jika ada, jika tidak, gunakan default
+    $cover = $newCoverName ?: 'default-cover.jpg';
 
-    return mysqli_stmt_affected_rows($stmt);
+    $stmt = $this->conn->prepare("INSERT INTO ebooks (added_by, title, description, author, year, category, type, price, link, cover, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt->bind_param(
+      'ssssisssiss',
+      $_SESSION['username'],
+      $data['title'],
+      $data['description'],
+      $data['author'],
+      $data['year'],
+      $data['category'],
+      $data['type'],
+      $data['price'],
+      $data['link'],
+      $cover,
+      $data['status']
+    );
+
+    return $stmt->execute() ? $stmt->affected_rows : 0;
   }
 
-  /**
-   * Memperbarui data eBook yang ada dengan aman menggunakan Prepared Statements.
-   */
   public function update($data, $files)
   {
-    $conn = connect();
-    // Sanitasi dan persiapan data
-    $id = (int)htmlspecialchars($data['id']);
-    $title = htmlspecialchars($data['title']);
-    $description = htmlspecialchars($data['description'] ?? '');
-    $author = htmlspecialchars($data['author']);
-    $year = !empty($data['year']) ? htmlspecialchars($data['year']) : null;
-    $category = htmlspecialchars($data['category']);
-    $price = (int)htmlspecialchars($data['price'] ?? 0);
-    $type = ($price > 0) ? 'Paid' : 'Free';
-    $link = htmlspecialchars($data['link']);
-    $status = htmlspecialchars($data['status']);
-    $oldCover = htmlspecialchars($data['oldCover']);
-    $cover = $this->uploadCover($files['cover']);
+    $_FILES = $files;
+    $newCoverName = $this->uploadCover();
 
-    if (is_null($cover)) {
-      $cover = $oldCover;
-    } elseif ($cover === false) {
+    if ($newCoverName === false) {
+      return -1; // Gagal upload, hentikan proses
+    }
+
+    $coverToUpdate = $newCoverName ?: $data['old_cover'];
+
+    // Jika ada file cover baru yang di-upload, hapus file lama
+    if ($newCoverName && $data['old_cover'] && $data['old_cover'] !== 'default-cover.jpg') {
+      $oldCoverPath = 'assets/img/ebook/' . $data['old_cover'];
+      if (file_exists($oldCoverPath)) {
+        unlink($oldCoverPath);
+      }
+    }
+
+    $stmt = $this->conn->prepare("UPDATE ebooks SET title = ?, description = ?, author = ?, year = ?, category = ?, type = ?, price = ?, link = ?, cover = ?, status = ? WHERE id = ?");
+    $stmt->bind_param(
+      'sssisssissi',
+      $data['title'],
+      $data['description'],
+      $data['author'],
+      $data['year'],
+      $data['category'],
+      $data['type'],
+      $data['price'],
+      $data['link'],
+      $coverToUpdate,
+      $data['status'],
+      $data['id']
+    );
+
+    return $stmt->execute() ? $stmt->affected_rows : -1;
+  }
+
+  public function delete($id)
+  {
+    $ebook = $this->findById($id);
+    if ($ebook && $ebook['cover'] && $ebook['cover'] !== 'default-cover.jpg') {
+      $coverPath = 'assets/img/ebook/' . $ebook['cover'];
+      if (file_exists($coverPath)) {
+        unlink($coverPath);
+      }
+    }
+
+    $stmt = $this->conn->prepare("DELETE FROM ebooks WHERE id = ?");
+    $stmt->bind_param('i', $id);
+    return $stmt->execute() ? $stmt->affected_rows : 0;
+  }
+
+  // --- Fungsi Helper untuk Upload Cover yang Aman ---
+
+  private function uploadCover()
+  {
+    // Jika tidak ada file yang diunggah, kembalikan null
+    if (!isset($_FILES['cover']) || $_FILES['cover']['error'] === UPLOAD_ERR_NO_FILE) {
+      return null;
+    }
+
+    $fileName = $_FILES['cover']['name'];
+    $fileSize = $_FILES['cover']['size'];
+    $fileTmpName = $_FILES['cover']['tmp_name'];
+    $fileError = $_FILES['cover']['error'];
+
+    // 1. Cek jika ada error saat upload
+    if ($fileError !== UPLOAD_ERR_OK) {
+      error_log("Upload error code: " . $fileError);
       return false;
     }
 
-    // Menggunakan Prepared Statement untuk mencegah SQL Injection
-    $query = "UPDATE ebooks SET title = ?, description = ?, author = ?, year = ?, category = ?, type = ?, price = ?, link = ?, status = ?, cover = ? WHERE id = ?";
-    $stmt = mysqli_prepare($conn, $query);
-
-    if ($stmt === false) {
-      error_log('MySQL prepare error: ' . mysqli_error($conn));
-      return -1;
+    // 2. Validasi ekstensi file
+    $validExtensions = ['jpg', 'jpeg', 'png', 'gif'];
+    $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+    if (!in_array($fileExtension, $validExtensions)) {
+      return false;
     }
 
-    mysqli_stmt_bind_param($stmt, "ssssssisssi", $title, $description, $author, $year, $category, $type, $price, $link, $status, $cover, $id);
-    mysqli_stmt_execute($stmt);
-
-    $affected_rows = mysqli_stmt_affected_rows($stmt);
-    // Hapus cover lama jika update berhasil dan cover diganti
-    if ($affected_rows > 0 && $cover !== $oldCover && $oldCover !== 'default-cover.jpg') {
-      if (file_exists("assets/img/ebook/$oldCover")) {
-        unlink("assets/img/ebook/$oldCover");
-      }
+    // 3. Validasi tipe MIME (pengecekan paling aman)
+    $validMimeTypes = ['image/jpeg', 'image/png', 'image/gif'];
+    $fileMimeType = mime_content_type($fileTmpName);
+    if (!in_array($fileMimeType, $validMimeTypes)) {
+      return false;
     }
 
-    return $affected_rows;
-  }
-
-  /**
-   * Menghapus eBook dari database.
-   */
-  public function delete($id)
-  {
-    $conn = connect();
-    $id = (int)$id;
-    $ebook = $this->findById($id);
-
-    if ($ebook) {
-      $cover = $ebook['cover'];
-      $stmt = mysqli_prepare($conn, "DELETE FROM ebooks WHERE id = ?");
-      mysqli_stmt_bind_param($stmt, 'i', $id);
-      mysqli_stmt_execute($stmt);
-      $affected_rows = mysqli_stmt_affected_rows($stmt);
-
-      if ($affected_rows > 0 && $cover !== 'default-cover.jpg' && file_exists("assets/img/ebook/$cover")) {
-        unlink("assets/img/ebook/$cover");
-      }
-      return $affected_rows;
+    // 4. Validasi ukuran file (maksimal 2MB)
+    if ($fileSize > 2000000) {
+      return false;
     }
-    return 0;
-  }
 
-  /**
-   * Mencari eBook berdasarkan kata kunci.
-   */
-  public function search($keyword, $index = null, $limit = null)
-  {
-    $conn = connect();
-    $searchTerm = '%' . mysqli_real_escape_string($conn, $keyword) . '%';
-    $query = "SELECT * FROM ebooks WHERE title LIKE ? OR author LIKE ? OR category LIKE ? ORDER BY id DESC";
+    // 5. Buat nama file baru yang unik
+    $newFileName = uniqid('cover-', true) . '.' . $fileExtension;
+    $uploadPath = 'assets/img/ebook/' . $newFileName;
 
-    if ($index !== null && $limit !== null) {
-      $query .= " LIMIT ?, ?";
-      $stmt = mysqli_prepare($conn, $query);
-      mysqli_stmt_bind_param($stmt, 'sssii', $searchTerm, $searchTerm, $searchTerm, $index, $limit);
+    // 6. Pindahkan file jika semua validasi lolos
+    if (move_uploaded_file($fileTmpName, $uploadPath)) {
+      return $newFileName; // Kembalikan nama file baru
     } else {
-      $stmt = mysqli_prepare($conn, $query);
-      mysqli_stmt_bind_param($stmt, 'sss', $searchTerm, $searchTerm, $searchTerm);
+      return false;
     }
-
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-    return mysqli_fetch_all($result, MYSQLI_ASSOC);
-  }
-
-  /**
-   * Menghitung hasil pencarian.
-   */
-  public function countSearch($keyword)
-  {
-    $conn = connect();
-    $searchTerm = '%' . mysqli_real_escape_string($conn, $keyword) . '%';
-    $stmt = mysqli_prepare($conn, "SELECT COUNT(*) as total FROM ebooks WHERE title LIKE ? OR author LIKE ? OR category LIKE ?");
-    mysqli_stmt_bind_param($stmt, 'sss', $searchTerm, $searchTerm, $searchTerm);
-    mysqli_stmt_execute($stmt);
-    $result = mysqli_stmt_get_result($stmt);
-    return mysqli_fetch_assoc($result)['total'];
-  }
-
-  /**
-   * Mengunggah file cover dengan aman.
-   */
-  private function uploadCover($coverFile)
-  {
-    if (!isset($coverFile) || $coverFile['error'] === UPLOAD_ERR_NO_FILE) return null;
-
-    // Validasi error upload
-    if ($coverFile['error'] !== UPLOAD_ERR_OK) return false;
-
-    // Validasi ukuran dan tipe
-    $allowedExtensions = ['jpg', 'jpeg', 'png'];
-    $coverExtension = strtolower(pathinfo($coverFile['name'], PATHINFO_EXTENSION));
-    if (!in_array($coverExtension, $allowedExtensions)) return false;
-    if ($coverFile['size'] > 1048576) return false; // 1MB
-
-    // Membuat nama file yang unik untuk mencegah konflik
-    $newCoverName = uniqid('cover-', true) . '.' . $coverExtension;
-    $destination = 'assets/img/ebook/' . $newCoverName;
-
-    if (move_uploaded_file($coverFile['tmp_name'], $destination)) {
-      return $newCoverName;
-    }
-
-    return false; // Gagal memindahkan file
   }
 }

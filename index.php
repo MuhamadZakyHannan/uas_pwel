@@ -1,15 +1,18 @@
 <?php
 session_start();
 // Memuat semua library dari Composer (termasuk Midtrans)
-// require_once 'vendor/autoload.php';
+require_once __DIR__ . '/vendor/autoload.php';
 
 // Memuat semua file konfigurasi dan controller yang dibutuhkan
+require_once 'helpers/csrf_helper.php';
 require_once 'config/database.php';
 require_once 'controllers/HomeController.php';
 require_once 'controllers/EbookController.php';
 require_once 'controllers/AuthController.php';
 require_once 'controllers/PaymentController.php';
 require_once 'controllers/CartController.php';
+require_once 'controllers/HistoryController.php';
+require_once 'controllers/NotificationController.php';
 
 // Menentukan aksi default jika tidak ada parameter di URL
 $action = $_GET['action'] ?? 'home';
@@ -20,10 +23,8 @@ switch ($action) {
   case 'login':
   case 'signup':
   case 'logout':
+  case 'reset_session':
     (new AuthController())->$action();
-    break;
-  case 'reset_session': // Rute baru untuk membersihkan session
-    (new AuthController())->resetSession();
     break;
 
   // Rute untuk mengelola eBook
@@ -60,6 +61,17 @@ switch ($action) {
   // Rute untuk Transaksi Pembayaran
   case 'create_transaction':
     (new PaymentController())->createTransaction();
+    break;
+
+  // Rute untuk Riwayat dan Notifikasi
+  case 'history':
+    (new HistoryController())->index();
+    break;
+  case 'invoice':
+    (new HistoryController())->invoice();
+    break;
+  case 'notification':
+    (new NotificationController())->handle();
     break;
 
   // Rute Halaman Utama (default)

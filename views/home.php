@@ -70,13 +70,55 @@ include 'partials/navbar.php';
             <i class="bi bi-cloud-arrow-down-fill fs-2"></i>
           </div>
           <h4 class="fw-bold mb-3">Koleksi Lengkap</h4>
-          <p class="text-muted">Temukan ribuan buku dari berbagai kategori seperti fiksi, non-fiksi, pendidikan, dan banyak lagi. Semua tersedia dalam satu tempat untuk pengalaman membaca terbaik Anda.</p>
+          <p class="text-muted">Temukan ribuan buku dari berbagai kategori seperti fiksi, non-fiksi, pendidikan, dan banyak lagi.</p>
         </div>
       </div>
     </div>
   </div>
 </section>
 
+<section class="testimonial-section py-5">
+  <div class="container py-5">
+    <div class="row text-center mb-5">
+      <div class="col-lg-8 mx-auto">
+        <h2 class="display-5 fw-bold mb-4">Apa Kata Mereka?</h2>
+        <p class="lead text-muted">Lihat apa yang dikatakan oleh para pengguna setia kami tentang pengalaman mereka bersama Bukoo.</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-lg-4 mb-4">
+        <div class="testimonial-card card h-100 shadow-sm border-0">
+          <div class="card-body text-center p-4">
+            <img src="https://i.pravatar.cc/100?img=1" alt="User 1" class="rounded-circle mb-3" width="100" height="100">
+            <p class="text-muted fst-italic">"Aplikasi yang luar biasa! Saya bisa menemukan banyak sekali buku teknis yang sulit dicari di tempat lain. Sangat membantu pekerjaan saya sebagai developer."</p>
+            <h5 class="fw-bold mt-4 mb-0">Andi Pratama</h5>
+            <small class="text-muted">Software Engineer</small>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-4 mb-4">
+        <div class="testimonial-card card h-100 shadow-sm border-0">
+          <div class="card-body text-center p-4">
+            <img src="https://i.pravatar.cc/100?img=5" alt="User 2" class="rounded-circle mb-3" width="100" height="100">
+            <p class="text-muted fst-italic">"Sebagai mahasiswi, Bukoo sangat membantu saya mendapatkan materi dan referensi kuliah. Fitur pencariannya cepat dan koleksinya lengkap."</p>
+            <h5 class="fw-bold mt-4 mb-0">Citra Lestari</h5>
+            <small class="text-muted">Mahasiswi</small>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-4 mb-4">
+        <div class="testimonial-card card h-100 shadow-sm border-0">
+          <div class="card-body text-center p-4">
+            <img src="https://i.pravatar.cc/100?img=7" alt="User 3" class="rounded-circle mb-3" width="100" height="100">
+            <p class="text-muted fst-italic">"Suka sekali dengan konsepnya. Saya bisa membaca di mana saja dan kapan saja. Tampilannya juga bersih dan mudah digunakan. Highly recommended!"</p>
+            <h5 class="fw-bold mt-4 mb-0">Budi Santoso</h5>
+            <small class="text-muted">Pecinta Buku</small>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 <?php if (!isset($_SESSION['username'])): ?>
   <section class="cta-section py-5 text-white">
     <div class="container text-center py-5">
